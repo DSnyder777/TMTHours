@@ -20,6 +20,7 @@
         </div>
       </div>
       <p class="login-copy">Enter your password to continue.</p>
+      <p id="sync-status" class="sync-status sync-local">Loading shop data…</p>
       <form id="login-form" class="login-form" autocomplete="off">
         <div class="field-row">
           <label for="login-password">Password</label>
@@ -28,6 +29,15 @@
         <p id="login-error" class="login-error" hidden>Wrong password.</p>
         <button type="submit" class="btn-primary">Log in</button>
       </form>
+      <div class="login-import">
+        <p class="login-import-copy">
+          Offline / missing data? Import the website’s <code>data.json</code> here (putting the file next to index.html is not enough when you open the file directly).
+        </p>
+        <label class="btn-ghost publish-import-label">
+          Import data.json
+          <input type="file" id="login-import-input" accept="application/json,.json" hidden />
+        </label>
+      </div>
     </div>
   </div>
 
@@ -38,6 +48,7 @@
         <div>
           <p class="brand-name">Two Men and a Truck</p>
           <h1>Hours Scheduler</h1>
+          <p id="sync-status-app" class="sync-status sync-local" hidden></p>
         </div>
       </div>
       <div class="topbar-right">
@@ -57,24 +68,41 @@
       <section id="panel-log" class="panel is-active manager-only" role="tabpanel">
         <div class="section-head">
           <h2>Log a job</h2>
-          <p>Pick trucks first — each truck needs 1 driver and 1–4 movers. Then set Local, LD, or Non-billable only.</p>
+          <p id="log-crew-copy">Pick trucks first — each truck needs 1 driver and 1–4 movers. Then set Local, LD, or Non-billable only.</p>
         </div>
 
         <form id="log-form" class="log-form" autocomplete="off">
           <p id="edit-banner" class="edit-banner" hidden>Editing a recent job — change anything below, then update.</p>
 
-          <div class="field-row">
-            <label>How many trucks?</label>
-            <div id="truck-count-btns" class="truck-count-btns" role="group" aria-label="Number of trucks">
-              <button type="button" class="truck-count-btn is-active" data-trucks="1">1 truck</button>
-              <button type="button" class="truck-count-btn" data-trucks="2">2 trucks</button>
-              <button type="button" class="truck-count-btn" data-trucks="3">3 trucks</button>
-              <button type="button" class="truck-count-btn" data-trucks="4">4 trucks</button>
-              <button type="button" class="truck-count-btn" data-trucks="5">5 trucks</button>
+          <div id="truck-crew-section">
+            <div class="field-row">
+              <label>How many trucks?</label>
+              <div id="truck-count-btns" class="truck-count-btns" role="group" aria-label="Number of trucks">
+                <button type="button" class="truck-count-btn is-active" data-trucks="1">1 truck</button>
+                <button type="button" class="truck-count-btn" data-trucks="2">2 trucks</button>
+                <button type="button" class="truck-count-btn" data-trucks="3">3 trucks</button>
+                <button type="button" class="truck-count-btn" data-trucks="4">4 trucks</button>
+                <button type="button" class="truck-count-btn" data-trucks="5">5 trucks</button>
+              </div>
+            </div>
+
+            <div id="truck-panels" class="truck-panels"></div>
+          </div>
+
+          <div id="nb-crew-section" hidden>
+            <div class="field-row">
+              <label for="nb-crew-search">Who gets these non-billable hours?</label>
+              <input
+                type="search"
+                id="nb-crew-search"
+                class="crew-search"
+                placeholder="Search anyone on the roster…"
+                autocomplete="off"
+              />
+              <div id="nb-crew-picker" class="crew-picker"></div>
             </div>
           </div>
 
-          <div id="truck-panels" class="truck-panels"></div>
           <p id="crew-picked-count" class="crew-picked-count">0 selected</p>
           <p class="hours-cap-note">Names turn red if this pay week (Sun–Sat) is already over 40 hrs, or this job would push them over 40.</p>
 
@@ -108,7 +136,7 @@
           </p>
 
           <p id="nb-only-note" class="ld-note" hidden>
-            Non-billable only — no job estimate. Enter the set hours below (training, shop, travel, etc.).
+            Non-billable only — pick anyone (1 mover, 2 movers, mix of people — no driver or truck required). Enter the hours below.
           </p>
 
           <div class="field-row">
@@ -134,6 +162,8 @@
               </div>
             </div>
           </div>
+
+          <div id="person-hours-panel" class="person-hours-panel" hidden></div>
 
           <div class="form-actions">
             <button type="submit" class="btn-primary" id="log-submit">Save job</button>
@@ -168,6 +198,13 @@
             <option value="low">Lowest to highest</option>
             <option value="name">Name A–Z</option>
           </select>
+          <label class="week-sort-label manager-only" for="week-job-filter">Show</label>
+          <select id="week-job-filter" class="week-sort manager-only">
+            <option value="all">All job types</option>
+            <option value="local">Local jobs only</option>
+            <option value="ld">LD jobs only</option>
+            <option value="nb">Non-billable only</option>
+          </select>
           <button type="button" id="clear-week-btn" class="btn-danger-solid" hidden>
             Clear this week
           </button>
@@ -197,7 +234,7 @@
       <section id="panel-employee" class="panel" role="tabpanel" hidden>
         <div class="section-head">
           <h2 id="employee-panel-title">Employee focus</h2>
-          <p id="employee-panel-copy">Search someone and see their jobs and hours week by week. You can edit jobs from here too.</p>
+          <p id="employee-panel-copy">Search someone and see their jobs and hours week by week. With no one selected, all employee totals show below.</p>
         </div>
 
         <div id="employee-picker-wrap" class="field-row">
@@ -238,6 +275,26 @@
           </div>
           <button type="submit" class="btn-primary">Save manager passwords</button>
         </form>
+
+        <div class="publish-box manager-only">
+          <div class="section-head" style="margin-bottom: 0.75rem">
+            <h2 style="font-size: 1.15rem">Share with employees</h2>
+            <p>
+              After you add crew or jobs, download <code>data.json</code>, put it in your
+              TMTHours GitHub folder (replace the old one), and upload. Employees refresh the
+              live site to see the new hours.
+            </p>
+          </div>
+          <div class="publish-actions">
+            <button type="button" id="publish-download-btn" class="btn-primary">
+              Download data.json
+            </button>
+            <label class="btn-ghost publish-import-label">
+              Import data.json
+              <input type="file" id="publish-import-input" accept="application/json,.json" hidden />
+            </label>
+          </div>
+        </div>
 
         <form id="crew-form" class="crew-form" autocomplete="off">
           <div class="field-row grow">
